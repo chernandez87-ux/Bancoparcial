@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quiz Interactivo – Comportamiento del Consumidor</title>
+  <style>
+    :root{
+      --bg: #0f1115;
+      --card: #151923;
+      --muted: #8b95a7;
+      --text: #e6e9ef;
+      --accent: #4f8cff;
+      --right: #1f9d5c;
+      --wrong: #d9534f;
+      --border: #242a36;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji"; background:var(--bg); color:var(--text)}
+    .wrap{max-width: 980px; margin: 32px auto; padding: 0 16px}
+    header{display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-bottom:16px}
+    h1{font-size: clamp(20px, 3vw, 28px); margin:0}
+    .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+    .btn{appearance:none; border:1px solid var(--border); background:linear-gradient(180deg, #1a2030, #121724); color:var(--text); padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600; letter-spacing:.2px; transition: transform .06s ease, box-shadow .2s ease, border-color .2s ease}
+    .btn:hover{transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,.3); border-color:#2a3142}
+    .btn.primary{background:linear-gradient(180deg, #2a5fff, #1d3ec9); border-color:#2444e6}
+    .btn.ghost{background:transparent}
+    .seg{display:flex; border:1px solid var(--border); border-radius:12px; overflow:hidden}
+    .seg button{border:0; background:transparent; padding:10px 12px; color:var(--muted); font-weight:600; cursor:pointer}
+    .seg button.active{background:#1a2030; color:var(--text)}
+
+    .quiz{display:grid; gap:14px}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px}
+    .qhead{display:flex; gap:10px; align-items:flex-start}
+    .qnum{flex:0 0 auto; width:32px; height:32px; border-radius:10px; display:grid; place-items:center; font-weight:700; background:#1a2030; color:#c7d2fe; border:1px solid #23293a}
+    .qtext{font-size:16px; line-height:1.5}
+    .opts{margin-top:10px; display:grid; gap:8px}
+
+    label.opt{display:flex; gap:10px; align-items:flex-start; padding:10px; border:1px solid var(--border); border-radius:12px; cursor:pointer; background:#121724}
+    label.opt:hover{border-color:#2a3142}
+    input[type="radio"]{margin-top:3px}
+
+    .feedback{margin-top:10px; font-weight:700}
+    .ok{color: var(--right)}
+    .bad{color: var(--wrong)}
+    .hint{color:var(--muted); font-size:13px; margin-top:4px}
+
+    .footer{position:sticky; bottom:0; background: linear-gradient(180deg, rgba(15,17,21,.0), rgba(15,17,21,.95) 30%); padding-top:10px;}
+    .bar{display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; padding:12px 0}
+    .score{font-weight:800}
+
+    .switch{display:inline-flex; align-items:center; gap:8px; color:var(--muted); font-weight:600}
+    .switch input{width:42px; height:24px}
+
+    .tag{display:inline-flex; align-items:center; gap:6px; color:#a9b5c9; background:#111521; border:1px solid #263148; padding:6px 10px; border-radius:999px; font-size:12px}
+    .tag b{color:#ccd6eb}
+
+    @media (max-width:640px){
+      .qtext{font-size:15px}
+      label.opt{font-size:14px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Quiz Interactivo – Comportamiento del Consumidor</h1>
+      <div class="controls">
+        <span class="tag" title="18 fáciles + 2 conductual"><b>20</b> preguntas</span>
+        <label class="switch" title="Muestra si aciertas al seleccionar">
+          <input type="checkbox" id="studyMode" /> Modo estudio
+        </label>
+        <button class="btn ghost" id="shuffleBtn" title="Mezclar el orden">Mezclar</button>
+        <button class="btn" id="resetBtn" title="Borrar respuestas">Reiniciar</button>
+        <button class="btn primary" id="gradeBtn" title="Calificar todo">Calificar</button>
+      </div>
+    </header>
+
+    <div id="quiz" class="quiz"></div>
+
+    <div class="footer">
+      <div class="bar">
+        <div class="score" id="score">Puntaje: –</div>
+        <div class="hint">Consejo: activa <b>Modo estudio</b> para recibir feedback inmediato por pregunta.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Banco de preguntas (20) – Nivel experto
+    // Basadas en tus diapositivas y en bancos previos
+    const QUESTIONS = [
+      {
+        text: "El comportamiento del consumidor estudia principalmente:",
+        options: [
+          "Cómo las empresas crean campañas publicitarias.",
+          "Cómo las personas seleccionan, compran, usan y desechan productos.",
+          "La planeación estratégica de las 4P’s.",
+          "Cómo las marcas compiten en un mismo mercado."
+        ], correct: 1,
+        why: "Definición canónica: selección, compra, uso y desecho para satisfacer necesidades/deseos."
+      },
+      {
+        text: "Si una persona compra un coche por ‘estatus social’, el factor que más influye es:",
+        options: ["Personal","Social","Cultural","Psicológico"], correct: 1,
+        why: "El estatus y la influencia del entorno/roles son sociales."
+      },
+      {
+        text: "Orden correcto del proceso de compra:",
+        options: [
+          "Reconocimiento → Búsqueda → Evaluación → Decisión → Postcompra",
+          "Decisión → Reconocimiento → Evaluación → Postcompra",
+          "Búsqueda → Postcompra → Decisión → Evaluación",
+          "Reconocimiento → Decisión → Búsqueda → Evaluación"
+        ], correct: 0,
+        why: "Secuencia clásica de 5 etapas."
+      },
+      {
+        text: "La diferencia entre cliente y consumidor es:",
+        options: ["Cliente paga, consumidor usa.","Cliente usa y paga, consumidor observa.","Cliente busca, consumidor decide.","No hay diferencia."], correct: 0,
+        why: "Cliente = quien compra/paga; consumidor = quien utiliza."
+      },
+      {
+        text: "Tomar siempre café de la misma marca sin comparar precios es un ejemplo de:",
+        options: ["Motivación inconsciente","Aprendizaje condicionado","Hábito","Segmentación conductual"], correct: 2,
+        why: "Conducta automática y repetida: hábito."
+      },
+      {
+        text: "Comprar un traje nuevo para una entrevista de trabajo corresponde a:",
+        options: ["Motivación consciente","Motivación inconsciente","Deseo","Cultura"], correct: 0,
+        why: "Razón explícita y racional."
+      },
+      {
+        text: "Un adolescente compra tenis de moda porque su grupo los usa. El factor es:",
+        options: ["Personal","Cultural","Social","Psicológico"], correct: 2,
+        why: "Influencia de pares = social."
+      },
+      {
+        text: "Promociones de ‘solo por hoy’ apelan al principio de:",
+        options: ["Escasez","Reciprocidad","Prueba social","Compromiso"], correct: 0,
+        why: "Limitación temporal = escasez."
+      },
+      {
+        text: "En la ruta periférica de persuasión, el consumidor decide en función de:",
+        options: ["Argumentos sólidos","Información detallada","Señales externas (celebridades, colores)","Experiencias previas"], correct: 2,
+        why: "La periferia usa atajos y señales externas."
+      },
+      {
+        text: "El estímulo sensorial cuando un súper difunde olor a pan recién horneado es:",
+        options: ["Visual","Auditivo","Olfativo","Cognitivo – memoria"], correct: 2,
+        why: "Es netamente olfativo."
+      },
+      {
+        text: "Un médico recomendando un suplemento apela al principio de:",
+        options: ["Compromiso y coherencia","Simpatía","Autoridad","Prueba social"], correct: 2,
+        why: "Figura experta = autoridad."
+      },
+      {
+        text: "El miedo a perderse una oportunidad exclusiva se conoce como:",
+        options: ["Reciprocidad","FOMO","Percepción de valor","Motivación inconsciente"], correct: 1,
+        why: "Fear of Missing Out."
+      },
+      {
+        text: "Recordar una marca de perfume por asociarla a la infancia es un estímulo:",
+        options: ["Cognitivo – memoria","Sensorial – gustativo","Cognitivo – atención","Sensorial – auditivo"], correct: 0,
+        why: "La clave es la evocación/recuerdo."
+      },
+      {
+        text: "En segmentación demográfica se consideran:",
+        options: ["Edad, sexo, ingresos, educación","Valores, intereses, personalidad","Hábitos y lealtad","País, ciudad, clima"], correct: 0,
+        why: "Demográfica = variables socio‑demo cuantificables."
+      },
+      {
+        text: "Clasificar clientes por ‘sensibilidad al precio’ o ‘fidelidad’ es segmentación:",
+        options: ["Demográfica","Conductual","Psicográfica","Geográfica"], correct: 1,
+        why: "Conductual = respuesta/uso/lealtad."
+      },
+      {
+        text: "Nike al conectar con la subcultura deportiva urbana está aplicando:",
+        options: ["Segmentación demográfica","Subcultura en marketing","Factor cultural","Motivación inconsciente"], correct: 1,
+        why: "Uso de identidades de subcultura para conectar."
+      },
+      {
+        text: "Comprar vitaminas porque ‘dan energía’ (sin evidencia) se explica por:",
+        options: ["Cultura","Percepción","Estilo de vida","Aprendizaje"], correct: 1,
+        why: "Percepción subjetiva del valor/beneficio."
+      },
+      {
+        text: "El cliente que odia comprar y requiere mucho esfuerzo para decidir es:",
+        options: ["Cliente social","Cliente reacio","Cliente práctico","Cliente emocional"], correct: 1,
+        why: "Reacio = evita/odia comprar."
+      },
+      {
+        text: "Un perfume de lujo con envase pesado transmite calidad mediante estímulo:",
+        options: ["Táctil","Auditivo","Gustativo","Cognitivo – atención"], correct: 0,
+        why: "Peso/textura = táctil."
+      },
+      {
+        text: "Si alguien paga Netflix 4K tras comprar TV premium, la empresa segmenta por:",
+        options: ["Psicográfica","Conductual por patrones de uso","Geográfica","Subcultura digital"], correct: 1,
+        why: "Vínculo de uso/servicio con producto adquirido."
+      }
+    ];
+
+    // Estado
+    let order = [...QUESTIONS.keys()];
+
+    function shuffle(array){
+      for(let i = array.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    const quizEl = document.getElementById('quiz');
+    const scoreEl = document.getElementById('score');
+    const studyModeEl = document.getElementById('studyMode');
+
+    function render(){
+      quizEl.innerHTML = '';
+      order.forEach((idx, n) => {
+        const q = QUESTIONS[idx];
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.qidx = idx;
+        card.innerHTML = `
+          <div class="qhead">
+            <div class="qnum">${n+1}</div>
+            <div class="qtext">${q.text}</div>
+          </div>
+          <div class="opts">
+            ${q.options.map((opt, oi) => `
+              <label class="opt">
+                <input type="radio" name="q_${idx}" value="${oi}" />
+                <span><b>${String.fromCharCode(65+oi)}.</b> ${opt}</span>
+              </label>
+            `).join('')}
+          </div>
+          <div class="feedback" id="fb_${idx}" hidden></div>
+          <div class="hint" id="hint_${idx}" hidden></div>
+        `;
+        quizEl.appendChild(card);
+      });
+      scoreEl.textContent = 'Puntaje: –';
+      attachListeners();
+    }
+
+    function attachListeners(){
+      quizEl.querySelectorAll('input[type="radio"]').forEach(input => {
+        input.addEventListener('change', (e) => {
+          if(!studyModeEl.checked) return;
+          const idx = Number(e.target.name.split('_')[1]);
+          showFeedback(idx, Number(e.target.value));
+        });
+      });
+    }
+
+    function showFeedback(qidx, selected){
+      const fb = document.getElementById(`fb_${qidx}`);
+      const hint = document.getElementById(`hint_${qidx}`);
+      const q = QUESTIONS[qidx];
+      const ok = selected === q.correct;
+      fb.hidden = false;
+      hint.hidden = false;
+      fb.textContent = ok ? '✔ Correcto' : `✘ Incorrecto. Respuesta: ${String.fromCharCode(65+q.correct)}`;
+      fb.className = 'feedback ' + (ok ? 'ok' : 'bad');
+      hint.textContent = q.why || '';
+    }
+
+    function grade(){
+      let correct = 0, total = QUESTIONS.length;
+      order.forEach(idx => {
+        const sel = quizEl.querySelector(`input[name="q_${idx}"]:checked`);
+        const chosen = sel ? Number(sel.value) : -1;
+        const isRight = chosen === QUESTIONS[idx].correct;
+        if(isRight) correct++;
+        const fb = document.getElementById(`fb_${idx}`);
+        const hint = document.getElementById(`hint_${idx}`);
+        fb.hidden = false;
+        fb.textContent = isRight ? '✔ Correcto' : `✘ Incorrecto. Respuesta: ${String.fromCharCode(65+QUESTIONS[idx].correct)}`;
+        fb.className = 'feedback ' + (isRight ? 'ok' : 'bad');
+        hint.hidden = false;
+        hint.textContent = QUESTIONS[idx].why || '';
+      });
+      const pct = Math.round((correct/total)*100);
+      scoreEl.textContent = `Puntaje: ${correct}/${total} (${pct}%)`;
+    }
+
+    // Buttons
+    document.getElementById('gradeBtn').addEventListener('click', grade);
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      quizEl.querySelectorAll('input[type="radio"]').forEach(i => i.checked = false);
+      quizEl.querySelectorAll('.feedback').forEach(f => {f.hidden = true; f.textContent=''; f.className='feedback'});
+      quizEl.querySelectorAll('.hint').forEach(h => {h.hidden = true; h.textContent=''});
+      scoreEl.textContent = 'Puntaje: –';
+    });
+
+    document.getElementById('shuffleBtn').addEventListener('click', () => {
+      order = shuffle([...QUESTIONS.keys()]);
+      render();
+    });
+
+    // Inicial
+    render();
+  </script>
+</body>
+</html>
